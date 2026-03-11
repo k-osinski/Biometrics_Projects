@@ -1,0 +1,20 @@
+# Python - pliki skompilowane i cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Środowiska wirtualne
+venv/
+env/
+.env
+
+# Jupyter Notebooks - pliki tymczasowe
+.ipynb_checkpoints
+
+# Pliki systemowe i IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Dane i logi (opcjonalnie, jeśli nie chcesz wrzucać dużych zdjęć)
+*.log

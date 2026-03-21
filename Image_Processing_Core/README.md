@@ -1,7 +1,6 @@
 # Biometria - Projekt 1: Przetwarzanie Obrazów
 
-Projekt realizowany w ramach zajęć z Biometrii (luty 2026), skupiający się na ręcznej implementacji 
-algorytmów przetwarzania obrazu bez użycia gotowych bibliotek graficznych.
+Projekt realizowany w ramach zajęć z Biometrii (luty 2026), skupiający się na ręcznej implementacji algorytmów przetwarzania obrazu bez użycia gotowych bibliotek graficznych.
 
 ## O projekcie
 * **Cel:** Implementacja operacji na pikselach oraz filtrów splotowych "od zera" w języku Python.

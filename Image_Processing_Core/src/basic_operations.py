@@ -1,11 +1,10 @@
-import cv2
 import numpy as np
 
 
 def to_grayscale(img: np.ndarray) -> np.ndarray:
     if len(img.shape) == 2:
         return img
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    return (0.299 * img[:, :, 0] + 0.587 * img[:, :, 1] + 0.114 * img[:, :, 2]).astype(np.uint8)
 
 
 def adjust_brightness(img: np.ndarray, value: int) -> np.ndarray:

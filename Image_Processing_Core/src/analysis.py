@@ -1,5 +1,5 @@
-import cv2
 import numpy as np
+from src.basic_operations import to_grayscale
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -24,14 +24,14 @@ def compute_histogram(img: np.ndarray):
     fig, ax = plt.subplots(figsize=(6, 3))
 
     if len(img.shape) == 2:
-        hist = cv2.calcHist([img], [0], None, [256], [0, 256])
-        ax.fill_between(range(256), hist.flatten(), color=ACCENT, alpha=0.6)
+        hist, _ = np.histogram(img, bins=256, range=(0, 256))
+        ax.fill_between(range(256), hist, color=ACCENT, alpha=0.6)
         ax.set_xlim([0, 255])
     else:
         colors = ("#FF6B6B", "#51CF66", "#5C9AFF")
         labels = ("Czerwony", "Zielony", "Niebieski")
         for i, (col, label) in enumerate(zip(colors, labels)):
-            hist = cv2.calcHist([img], [i], None, [256], [0, 256])
+            hist, _ = np.histogram(img[:, :, i], bins=256, range=(0, 256))
             ax.plot(hist, color=col, label=label, alpha=0.8)
         ax.set_xlim([0, 255])
         ax.legend(fontsize=8, facecolor="none", edgecolor="none", labelcolor=TEXT_COLOR)
@@ -46,7 +46,7 @@ def compute_histogram(img: np.ndarray):
 
 def horizontal_projection(img: np.ndarray):
     if len(img.shape) == 3:
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        gray = to_grayscale(img)
     else:
         gray = img
 
@@ -65,7 +65,7 @@ def horizontal_projection(img: np.ndarray):
 
 def vertical_projection(img: np.ndarray):
     if len(img.shape) == 3:
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        gray = to_grayscale(img)
     else:
         gray = img
 

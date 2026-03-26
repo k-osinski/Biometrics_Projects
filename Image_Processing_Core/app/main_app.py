@@ -90,7 +90,7 @@ elif category == "Wykrywanie krawędzi":
         result = sobel_operator(img_array)
 
 elif category == "Filtr własny":
-    import cv2
+    from src.filters import custom_filter
 
     st.sidebar.subheader("Edytor jądra filtra")
     size = st.sidebar.selectbox("Rozmiar jądra", [3, 5, 7], index=0, key="kernel_size")
@@ -118,8 +118,7 @@ elif category == "Filtr własny":
     st.sidebar.markdown("**Podgląd jądra:**")
     st.sidebar.dataframe(kernel, hide_index=True)
 
-    result = cv2.filter2D(img_array, -1, kernel)
-    result = np.clip(result, 0, 255).astype(np.uint8)
+    result = custom_filter(img_array, kernel)
 
 col1, col2 = st.columns(2)
 

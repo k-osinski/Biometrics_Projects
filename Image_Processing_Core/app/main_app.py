@@ -9,9 +9,9 @@ from PIL import Image
 
 from src.basic_operations import (
     to_grayscale, adjust_brightness, adjust_contrast, negative,
-    adjust_gamma, adjust_logarithmic, equalize_histogram 
+    adjust_gamma, adjust_logarithmic, equalize_histogram, stretch_range 
     )
-from src.thresholding import binarize, binarize_otsu, otsu_threshold
+from src.thresholding import binarize, binarize_otsu
 from src.filters import mean_filter, gaussian_filter, sharpen_filter
 from src.edge_detection import roberts_cross, sobel_operator
 from src.analysis import compute_histogram, horizontal_projection, vertical_projection
@@ -75,19 +75,32 @@ if category == "Operacje na pikselach":
         result = adjust_gamma(img_array, alpha)
     elif operation == "Logarytmowanie":
         result = adjust_logarithmic(img_array)
+    elif operation == "Rozszerzenie zakresu (Liniowe)":
+        result = stretch_range(img_array)
     elif operation == "Wyrównanie histogramu":
         result = equalize_histogram(img_array)
     elif operation == "Negatyw":
         result = negative(img_array)
     elif operation == "Binaryzacja":
-        use_otsu = st.sidebar.checkbox("Użyj automatycznego progu (Metoda Otsu)")
-        if use_otsu:
-            result = binarize_otsu(img_array) 
-            t = otsu_threshold(img_array)
-            st.sidebar.info(f"Automatyczny próg Otsu: {t}")
-        else:
-            threshold = st.sidebar.slider("Próg binaryzacji", 0, 255, 128)
-            result = binarize(img_array, threshold)
+        strategy = st.sidebar.selectbox("Strategia:", 
+                                        ["Globalna (Ręczna)", "Globalna (Otsu)", 
+                                        "Lokalna (Bernsen)", "Adaptacyjna (Niblack)", 
+                                        "Wieloprogowanie"])
+        if strategy == "Globalna (Ręczna)":
+            t = st.sidebar.slider("Próg", 0, 255, 128)
+            result = binarize(img_array, t)
+        elif strategy == "Globalna (Otsu)":
+            result = binarize_otsu(img_array)
+        elif strategy == "Lokalna (Bernsen)":
+            w = st.sidebar.slider("Rozmiar okna", 3, 51, 15, step=2)
+            result = threshold_bernsen(img_array, w)
+        elif strategy == "Adaptacyjna (Niblack)":
+            w = st.sidebar.slider("Rozmiar okna", 3, 51, 15, step=2)
+            k = st.sidebar.slider("Parametr k", -1.0, 1.0, -0.2, step=0.1)
+            result = threshold_niblack(img_array, w, k)
+        elif strategy == "Wieloprogowanie":
+            range_val = st.sidebar.slider("Zakres jasności", 0, 255, (50, 200))
+            result = multi_threshold(img_array, range_val[0], range_val[1])
 
 elif category == "Filtry graficzne":
     filter_type = st.sidebar.selectbox(

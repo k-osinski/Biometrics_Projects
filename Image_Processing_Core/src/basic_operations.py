@@ -69,3 +69,20 @@ def equalize_histogram(img: np.ndarray) -> np.ndarray:
     cdf_normalized = (cdf_masked - cdf_masked.min()) * 255 / (cdf_masked.max() - cdf_masked.min())
     cdf_final = np.ma.filled(cdf_normalized, 0).astype(np.uint8)
     return cdf_final[img]
+
+def stretch_range(img: np.ndarray) -> np.ndarray:
+    """
+    Liniowe rozszerzenie zakresu jasności (rozciąganie histogramu).
+    Wzór: (J - Jmin) / (Jmax - Jmin) * (255 - 0) + 0
+    """
+    if len(img.shape) == 3:
+        img = to_grayscale(img)
+
+    j_min = np.min(img)
+    j_max = np.max(img)
+    if j_max == j_min:
+        return img
+        
+    result = (img.astype(np.float64) - j_min) / (j_max - j_min) * 255
+    
+    return np.clip(result, 0, 255).astype(np.uint8)

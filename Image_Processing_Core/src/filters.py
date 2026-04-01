@@ -1,5 +1,5 @@
 import numpy as np
-from convolution import convolve2d
+from .convolution import convolve2d
 
 
 def mean_filter(img: np.ndarray, kernel_size: int = 3) -> np.ndarray:

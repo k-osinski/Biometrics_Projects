@@ -1,5 +1,5 @@
 import numpy as np
-from basic_operations import to_grayscale
+from .basic_operations import to_grayscale
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

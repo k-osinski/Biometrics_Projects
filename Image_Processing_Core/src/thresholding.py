@@ -1,5 +1,5 @@
 import numpy as np
-from basic_operations import to_grayscale
+from .basic_operations import to_grayscale
 
 
 def binarize(img: np.ndarray, threshold: int = 128) -> np.ndarray:

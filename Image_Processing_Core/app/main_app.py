@@ -7,8 +7,11 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 
-from src.basic_operations import to_grayscale, adjust_brightness, adjust_contrast, negative
-from src.thresholding import binarize
+from src.basic_operations import (
+    to_grayscale, adjust_brightness, adjust_contrast, negative,
+    adjust_gamma, adjust_logarithmic, equalize_histogram 
+    )
+from src.thresholding import binarize, binarize_otsu, otsu_threshold
 from src.filters import mean_filter, gaussian_filter, sharpen_filter
 from src.edge_detection import roberts_cross, sobel_operator
 from src.analysis import compute_histogram, horizontal_projection, vertical_projection
@@ -42,24 +45,49 @@ result = None
 if category == "Operacje na pikselach":
     operation = st.sidebar.selectbox(
         "Operacja:",
-        ["Oryginał", "Odcienie szarości", "Jasność", "Kontrast", "Negatyw", "Binaryzacja"],
+        ["Oryginał", "Odcienie szarości", "Jasność", "Kontrast (Liniowy)",
+         "Korekta Gamma (Potęgowanie)", "Logarytmowanie", 
+         "Wyrównanie histogramu", "Negatyw", "Binaryzacja"],
     )
 
     if operation == "Oryginał":
         result = img_array
     elif operation == "Odcienie szarości":
-        result = to_grayscale(img_array)
+        method = st.sidebar.selectbox(
+            "Metoda konwersji:",
+            ["Luminancja (BT.601)", "Luminancja (BT.709)", "Średnia arytmetyczna", "Desaturacja"]
+        )
+        method_map = {
+            "Luminancja (BT.601)": "luminance_bt601",
+            "Luminancja (BT.709)": "luminance_bt709",
+            "Średnia arytmetyczna": "average",
+            "Desaturacja": "desaturation"
+        }
+        result = to_grayscale(img_array, method=method_map[method])
     elif operation == "Jasność":
         value = st.sidebar.slider("Wartość jasności", -150, 150, 0, step=5)
         result = adjust_brightness(img_array, value)
-    elif operation == "Kontrast":
+    elif operation == "Kontrast (Liniowy)":
         factor = st.sidebar.slider("Współczynnik kontrastu", 0.1, 3.0, 1.0, step=0.1)
         result = adjust_contrast(img_array, factor)
+    elif operation == "Korekta Gamma (Potęgowanie)":
+        alpha = st.sidebar.slider("Współczynnik Gamma (\u03B1)", 0.1, 5.0, 1.0, step=0.1)
+        result = adjust_gamma(img_array, alpha)
+    elif operation == "Logarytmowanie":
+        result = adjust_logarithmic(img_array)
+    elif operation == "Wyrównanie histogramu":
+        result = equalize_histogram(img_array)
     elif operation == "Negatyw":
         result = negative(img_array)
     elif operation == "Binaryzacja":
-        threshold = st.sidebar.slider("Próg binaryzacji", 0, 255, 128)
-        result = binarize(img_array, threshold)
+        use_otsu = st.sidebar.checkbox("Użyj automatycznego progu (Metoda Otsu)")
+        if use_otsu:
+            result = binarize_otsu(img_array) 
+            t = otsu_threshold(img_array)
+            st.sidebar.info(f"Automatyczny próg Otsu: {t}")
+        else:
+            threshold = st.sidebar.slider("Próg binaryzacji", 0, 255, 128)
+            result = binarize(img_array, threshold)
 
 elif category == "Filtry graficzne":
     filter_type = st.sidebar.selectbox(
@@ -170,4 +198,4 @@ if result is not None:
         st.pyplot(fig_v)
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Biometria 2025 — Projekt 1")
+st.sidebar.caption("Biometria 2026 — Projekt 1")

@@ -1,6 +1,6 @@
 import numpy as np
-from src.basic_operations import to_grayscale
-from src.convolution import convolve2d
+from basic_operations import to_grayscale
+from convolution import convolve2d
 
 
 def roberts_cross(img: np.ndarray) -> np.ndarray:

@@ -37,16 +37,27 @@ def _gaussian_weights(length: int, sigma: float | None = None) -> np.ndarray:
 
 
 def gaussian_radial_average(band: np.ndarray,
-                            sigma: float | None = None) -> np.ndarray:
+                            sigma: float | None = None,
+                            mask: np.ndarray | None = None) -> np.ndarray:
     """
     Uśrednianie kolumnowe (po wierszach) z wagami Gaussa.
 
     band   - shape (band_height, angular_res)
+    mask   - opcjonalna maska bool tej samej formy co band; True = piksel
+             ważny. Jeśli podana, uśrednianie idzie tylko po ważnych
+             pikselach (wagi Gaussa są przeskalowywane per kolumna).
     return - shape (angular_res,) - jedna liczba per kolumna.
     """
     h = band.shape[0]
     w = _gaussian_weights(h, sigma=sigma)
-    return (band.astype(np.float64) * w[:, None]).sum(axis=0)
+    if mask is None:
+        return (band.astype(np.float64) * w[:, None]).sum(axis=0)
+
+    valid = mask.astype(np.float64)
+    weighted = band.astype(np.float64) * w[:, None] * valid
+    norm = (w[:, None] * valid).sum(axis=0)
+    eps = 1e-9
+    return weighted.sum(axis=0) / np.maximum(norm, eps)
 
 
 def _resample_1d(signal: np.ndarray, new_length: int) -> np.ndarray:
@@ -117,20 +128,57 @@ def split_into_bands(unwrapped: np.ndarray,
     return bands
 
 
+def _resample_mask(mask_1d: np.ndarray, new_length: int) -> np.ndarray:
+    """Resampling maski bool do zadanej długości."""
+    if mask_1d.size == new_length:
+        return mask_1d.astype(bool)
+    xs_old = np.linspace(0.0, 1.0, mask_1d.size)
+    xs_new = np.linspace(0.0, 1.0, new_length)
+    return np.interp(xs_new, xs_old, mask_1d.astype(np.float64)) >= 0.5
+
+
 def build_band_signals(unwrapped: np.ndarray,
                        num_bands: int = 8,
                        points_per_band: int = 128,
                        gaussian_sigma: float | None = None,
-                       angular_extents=DEFAULT_BAND_ANGULAR_EXTENT
+                       angular_extents=DEFAULT_BAND_ANGULAR_EXTENT,
+                       extra_mask: np.ndarray | None = None,
+                       min_valid_fraction: float = 0.5,
                        ) -> BandSignals:
     """
     Cała ścieżka 6.14 (książka): obrazek -> 8 sygnałów 1D + maski.
 
-    Sigma w uśrednianiu Gaussowskim domyślnie liczone jako band_h / 4.
-    Maski wycinają obszary "rzęs/powiek" wg DEFAULT_BAND_ANGULAR_EXTENT.
+    Argumenty:
+        unwrapped
+            obraz rozwiniętej tęczówki (radial_res, angular_res).
+        num_bands
+            liczba pasów (domyślnie 8).
+        points_per_band
+            liczba próbek per pas (domyślnie 128).
+        gaussian_sigma
+            sigma w uśrednianiu radialnym - domyślnie band_h/4.
+        angular_extents
+            statyczna maska kątowa per pas wg DEFAULT_BAND_ANGULAR_EXTENT
+            (360/360/360/360/226/226/180/180 z książki).
+        extra_mask
+            opcjonalna maska 2D (radial_res, angular_res), True = piksel
+            ważny. Używana m.in. do nakładania detekcji powiek z
+            `unwrap.mask`. Łączona AND z maską angular_extents.
+        min_valid_fraction
+            kolumna wewnątrz pasa jest oznaczana jako ważna (po stronie
+            extra_mask) tylko gdy >= min_valid_fraction pikseli w tej
+            kolumnie pasa jest ważne.
     """
     bands = split_into_bands(unwrapped, num_bands=num_bands)
     band_h, angular_res = bands[0].shape
+
+    if extra_mask is not None:
+        if extra_mask.shape != unwrapped.shape:
+            raise ValueError("extra_mask musi mieć ten sam kształt co unwrapped.")
+        mask_bands = split_into_bands(extra_mask.astype(bool),
+                                      num_bands=num_bands)
+    else:
+        mask_bands = [None] * num_bands
 
     signals = np.zeros((num_bands, points_per_band), dtype=np.float64)
     masks = np.zeros((num_bands, points_per_band), dtype=bool)
@@ -139,18 +187,22 @@ def build_band_signals(unwrapped: np.ndarray,
         angular_extents = (360.0,) * num_bands
 
     for i, band in enumerate(bands):
-        avg = gaussian_radial_average(band, sigma=gaussian_sigma)
+        bm = mask_bands[i]
+        avg = gaussian_radial_average(band, sigma=gaussian_sigma, mask=bm)
         signals[i] = _resample_1d(avg, points_per_band)
 
-        mask_full = _angular_mask(angular_res, angular_extents[i])
-        # downsamplujemy maskę: mask_full ma rozdzielczość angular_res.
-        if angular_res == points_per_band:
-            mask_resampled = mask_full
+        # Statyczna maska kątowa wg książki.
+        static_mask = _angular_mask(angular_res, angular_extents[i])
+
+        # Maska "wystarczającej liczby ważnych pikseli" wg extra_mask.
+        if bm is not None:
+            col_valid_frac = bm.astype(np.float64).mean(axis=0)
+            dynamic_mask = col_valid_frac >= min_valid_fraction
+            full_mask = static_mask & dynamic_mask
         else:
-            xs_old = np.linspace(0.0, 1.0, angular_res)
-            xs_new = np.linspace(0.0, 1.0, points_per_band)
-            mask_resampled = np.interp(xs_new, xs_old,
-                                       mask_full.astype(np.float64)) >= 0.5
-        masks[i] = mask_resampled
+            full_mask = static_mask
+
+        # Resampling do liczby punktów per pas.
+        masks[i] = _resample_mask(full_mask, points_per_band)
 
     return BandSignals(signals=signals, masks=masks, band_height=band_h)

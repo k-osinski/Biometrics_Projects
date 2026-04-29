@@ -19,7 +19,7 @@ import numpy as np
 
 from ..core.basic_operations import to_grayscale
 from ..core.morphology import (
-    closing, opening, get_structuring_element
+    closing, opening, get_structuring_element, keep_largest_component,
 )
 from ..core.projections import estimate_circle_from_projections
 
@@ -55,7 +55,8 @@ def detect_pupil(gray: np.ndarray,
                  x_p: float = 3.0,
                  close_size: int = 7,
                  open_size: int = 5,
-                 projection_threshold: float = 0.5) -> PupilResult:
+                 projection_threshold: float = 0.5,
+                 keep_largest: bool = True) -> PupilResult:
     """
     Detekcja źrenicy.
 
@@ -73,6 +74,14 @@ def detect_pupil(gray: np.ndarray,
         projection_threshold
             próg (jako ułamek maksimum projekcji), powyżej którego
             uznajemy, że dany wiersz/kolumna należy do źrenicy.
+        keep_largest
+            jeśli True, po cleanupie morfologicznym pozostawiany jest
+            tylko *największy* spójny komponent (area opening).
+            Dzięki temu projekcje nie są zakłócane przez ewentualne
+            kępy rzęs / cienie / ramki obiektywu, które przetrwały
+            otwarcie morfologiczne. Operacja jest "ostatnią linią
+            obrony" - przy dobrze dobranych X_P, close_size, open_size
+            jest no-op (komponent i tak jest jeden).
 
     Zwraca:
         PupilResult(cx, cy, radius, threshold, binary_mask).
@@ -91,6 +100,11 @@ def detect_pupil(gray: np.ndarray,
         binary = closing(binary, get_structuring_element("square", close_size))
     if open_size and open_size > 1:
         binary = opening(binary, get_structuring_element("square", open_size))
+
+    # Filtr największego spójnego komponentu - eliminuje resztki spoza
+    # źrenicy (rzęsy, cienie), które przetrwały otwarcie.
+    if keep_largest:
+        binary = keep_largest_component(binary, connectivity=4)
 
     cx, cy, r = estimate_circle_from_projections(binary, projection_threshold)
     return PupilResult(cx=cx, cy=cy, radius=r,

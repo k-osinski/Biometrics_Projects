@@ -28,6 +28,7 @@ import numpy as np
 from ..core.basic_operations import to_grayscale
 from ..segmentation.pupil_detector import PupilResult
 from ..segmentation.iris_detector import IrisResult
+from ..segmentation.eyelid_detector import EyelidResult, eyelid_mask
 
 
 @dataclass
@@ -76,7 +77,8 @@ def unwrap_iris(img: np.ndarray,
                 iris: IrisResult,
                 radial_res: int = 64,
                 angular_res: int = 256,
-                start_angle: float = 0.0) -> UnwrapResult:
+                start_angle: float = 0.0,
+                eyelids: EyelidResult | None = None) -> UnwrapResult:
     """
     Rozwija pierścień tęczówki do prostokąta.
 
@@ -127,4 +129,11 @@ def unwrap_iris(img: np.ndarray,
 
     values, mask = _bilinear_sample(gray, xs, ys)
     image = np.clip(values, 0, 255).astype(np.uint8)
+
+    # Maska powiek - jeśli wykryto parabole, oznacz piksele leżące za nimi
+    # jako "nieważne" (False).
+    if eyelids is not None and eyelids.detected:
+        valid_eyelids = eyelid_mask(eyelids, xs, ys)
+        mask = mask & valid_eyelids
+
     return UnwrapResult(image=image, mask=mask)

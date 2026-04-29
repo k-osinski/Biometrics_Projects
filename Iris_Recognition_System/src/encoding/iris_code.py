@@ -84,7 +84,9 @@ def encode_iris(unwrapped: np.ndarray,
                 frequency: float = DEFAULT_FREQUENCY,
                 sigma: float | None = None,
                 gaussian_radial_sigma: float | None = None,
-                angular_extents=DEFAULT_BAND_ANGULAR_EXTENT
+                angular_extents=DEFAULT_BAND_ANGULAR_EXTENT,
+                unwrap_mask: np.ndarray | None = None,
+                min_valid_fraction: float = 0.5,
                 ) -> IrisCode:
     """
     Pełna ścieżka kodowania: obraz rozwinięty -> kod tęczówki.
@@ -109,6 +111,8 @@ def encode_iris(unwrapped: np.ndarray,
         points_per_band=points_per_band,
         gaussian_sigma=gaussian_radial_sigma,
         angular_extents=angular_extents,
+        extra_mask=unwrap_mask,
+        min_valid_fraction=min_valid_fraction,
     )
 
     params = GaborParams(frequency=frequency, sigma=sigma)

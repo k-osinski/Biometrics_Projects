@@ -48,10 +48,55 @@ with st.sidebar.expander("Segmentacja źrenicy", expanded=True):
                          "tylko najczarniejsze piksele.")
     pupil_close = st.slider("Rozmiar zamknięcia (pupil)", 1, 21, 7, 2)
     pupil_open = st.slider("Rozmiar otwarcia (pupil)", 1, 21, 5, 2)
+    pupil_keep_largest = st.checkbox(
+        "Filtr największego komponentu",
+        value=True,
+        help="Po cleanupie morfologicznym zostawia tylko najliczniejszy "
+             "spójny obszar w masce binarnej. Eliminuje resztki rzęs/cieni.",
+    )
 
 with st.sidebar.expander("Segmentacja tęczówki", expanded=True):
     x_i = st.slider("X_I (próg dla tęczówki = P / X_I)",
-                    min_value=0.5, max_value=2.5, value=1.15, step=0.05)
+                    min_value=0.5, max_value=2.5, value=1.15, step=0.05,
+                    help="Mniejsze X_I -> wyższy próg -> szerszy zakres "
+                         "'ciemnych' promieni. Większe -> ostrzejsza "
+                         "tęczówka.")
+    iris_smooth = st.slider("Sigma wygładzania (iris)", 0.5, 8.0, 2.0, 0.5)
+    iris_min_factor = st.slider("Min. promień tęczówki (× r_p)",
+                                1.1, 3.0, 1.5, 0.1)
+    iris_max_factor = st.slider("Maks. promień tęczówki (× r_p)",
+                                2.0, 6.0, 4.5, 0.1)
+
+with st.sidebar.expander("Detekcja powiek (Daugman)", expanded=False):
+    detect_eyelids_flag = st.checkbox(
+        "Wykrywaj powieki (parabole)", value=True,
+        help="Sobel pionowy + RANSAC fit paraboli y=ax²+bx+c, dla górnej "
+             "i dolnej powieki. Wyniki maskują rozwiniętą tęczówkę "
+             "i propagują się do kodu.",
+    )
+    eyelid_min_gradient = st.slider(
+        "Min. |∂I/∂y| (próg krawędzi)", 0.0, 400.0, 80.0, 5.0,
+        help="Sobel na uint8 daje wartości rzędu setek (skok jasności "
+             "100→200 ≈ 400). Im wyższy próg, tym mniej kandydackich "
+             "kolumn -> mniej outlierów, ale ryzyko nie wykrycia "
+             "słabej powieki.",
+    )
+    eyelid_inlier_dist = st.slider(
+        "Tolerancja RANSAC (px)", 1.0, 15.0, 4.0, 0.5,
+    )
+    eyelid_min_inlier_fraction = st.slider(
+        "Min. frakcja inlierów (jakość fitu)", 0.05, 0.8, 0.2, 0.05,
+        help="Jeśli RANSAC zwróci fit z mniejszą liczbą inlierów "
+             "(względem wszystkich kandydackich kolumn), powieka jest "
+             "uznana za niewykrytą i statyczna maska 360°/226°/180° "
+             "bierze rolę zabezpieczenia.",
+    )
+    eyelid_vertical_inner_skip = st.slider(
+        "Pominięty wewnętrzny pas tęczówki", 0.0, 0.6, 0.3, 0.05,
+        help="Frakcja promienia tęczówki (od środka źrenicy), w której "
+             "NIE szukamy powieki. Wyłącza wnętrze tęczówki gdzie często "
+             "siedzą rzęsy/melanina dające fałszywe peaki gradientu.",
+    )
 
 with st.sidebar.expander("Rozwinięcie tęczówki", expanded=False):
     radial_res = st.slider("Wysokość (radial_res)", 16, 128, 64, 8)
@@ -79,7 +124,7 @@ def _load_pil(uploaded_file) -> np.ndarray:
 
 
 def _annotate_segmentation(img: np.ndarray, result) -> Image.Image:
-    """Rysuje okrąg źrenicy i tęczówki na oryginalnym obrazie."""
+    """Rysuje okrąg źrenicy/tęczówki + parabole powiek na obrazie."""
     if img.ndim == 2:
         rgb = np.stack([img] * 3, axis=-1)
     else:
@@ -95,7 +140,38 @@ def _annotate_segmentation(img: np.ndarray, result) -> Image.Image:
                  outline="#51CF66", width=2)
     draw.line([(p.cx - 5, p.cy), (p.cx + 5, p.cy)], fill="#FFEC3D", width=2)
     draw.line([(p.cx, p.cy - 5), (p.cx, p.cy + 5)], fill="#FFEC3D", width=2)
+
+    # parabole powiek
+    eyelids = result.segmentation.eyelids
+    if eyelids is not None:
+        h, w = pil.size[1], pil.size[0]
+        x_lo = max(0, p.cx - i.radius)
+        x_hi = min(w - 1, p.cx + i.radius)
+        xs = np.arange(x_lo, x_hi + 1)
+        for parabola, color in ((eyelids.upper, "#5C9AFF"),
+                                (eyelids.lower, "#5C9AFF")):
+            if parabola is None:
+                continue
+            ys = parabola(xs)
+            pts = [(int(x), int(y)) for x, y in zip(xs, ys)
+                   if 0 <= y < h]
+            if len(pts) >= 2:
+                draw.line(pts, fill=color, width=2)
     return pil
+
+
+def _unwrap_with_mask(unwrap) -> Image.Image:
+    """Rozwinięta tęczówka z półprzezroczystym ściemnieniem zamaskowanych pikseli."""
+    img = unwrap.image
+    rgb = np.stack([img] * 3, axis=-1).astype(np.float64)
+    invalid = ~unwrap.mask
+    if invalid.any():
+        # tint zamaskowanych pikseli na czerwono i ściemnij
+        red_tint = np.array([200.0, 60.0, 60.0])
+        alpha = 0.55
+        rgb[invalid] = (1 - alpha) * rgb[invalid] + alpha * red_tint
+    rgb = np.clip(rgb, 0, 255).astype(np.uint8)
+    return Image.fromarray(rgb)
 
 
 def _iris_code_visual(code) -> Image.Image:
@@ -113,6 +189,15 @@ def _process(img_array: np.ndarray):
         img_array,
         x_p=x_p, x_i=x_i,
         pupil_close=pupil_close, pupil_open=pupil_open,
+        pupil_keep_largest=pupil_keep_largest,
+        iris_smoothing_sigma=iris_smooth,
+        iris_min_radius_factor=iris_min_factor,
+        iris_max_radius_factor=iris_max_factor,
+        detect_eyelids_flag=detect_eyelids_flag,
+        eyelid_min_gradient=eyelid_min_gradient,
+        eyelid_inlier_dist=eyelid_inlier_dist,
+        eyelid_min_inlier_fraction=eyelid_min_inlier_fraction,
+        eyelid_vertical_inner_skip=eyelid_vertical_inner_skip,
         radial_res=radial_res, angular_res=angular_res,
         gabor_frequency=frequency, gabor_sigma=sigma_value,
     )
@@ -147,7 +232,8 @@ with tab_pipeline:
                              f"Źrenica: ({result.segmentation.pupil.cx},"
                              f" {result.segmentation.pupil.cy}), "
                              f"r={result.segmentation.pupil.radius} | "
-                             f"Tęczówka: r={result.segmentation.iris.radius}"))
+                             f"Tęczówka: r={result.segmentation.iris.radius}"
+                             f" ({result.segmentation.iris.method_used})"))
                 st.image(result.segmentation.pupil.binary_mask,
                          use_container_width=True,
                          caption="Maska binarna źrenicy (po morfologii)",
@@ -155,8 +241,12 @@ with tab_pipeline:
 
             with cols[1]:
                 st.subheader("Rozwinięcie tęczówki")
-                st.image(result.unwrap.image, use_container_width=True,
-                         caption=f"Rozmiar: {result.unwrap.image.shape}")
+                masked_frac = float((~result.unwrap.mask).mean())
+                st.image(_unwrap_with_mask(result.unwrap),
+                         use_container_width=True,
+                         caption=(f"Rozmiar: {result.unwrap.image.shape} | "
+                                  f"zamaskowane: {masked_frac:.1%} "
+                                  f"(czerwone = ignorowane)"))
                 st.subheader("Kod tęczówki")
                 st.image(_iris_code_visual(result.code),
                          use_container_width=True,
@@ -205,14 +295,14 @@ with tab_match:
                 st.image(_annotate_segmentation(img_a, res_a),
                          caption="A - segmentacja",
                          use_container_width=True)
-                st.image(res_a.unwrap.image,
+                st.image(_unwrap_with_mask(res_a.unwrap),
                          caption="A - rozwinięcie",
                          use_container_width=True)
             with cols2[1]:
                 st.image(_annotate_segmentation(img_b, res_b),
                          caption="B - segmentacja",
                          use_container_width=True)
-                st.image(res_b.unwrap.image,
+                st.image(_unwrap_with_mask(res_b.unwrap),
                          caption="B - rozwinięcie",
                          use_container_width=True)
 

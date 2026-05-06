@@ -1,9 +1,7 @@
 """
-Aplikacja Streamlit - Biometria, Projekt 2 (Rozpoznawanie tęczówki).
-
+Aplikacja Streamlit - Rozpoznawanie tęczówki.
 Uruchomienie:
     streamlit run app/main_app.py
-
 Funkcje:
     1. wgranie obrazu oka (BMP / PNG / JPG),
     2. interaktywna segmentacja (źrenica + tęczówka),
@@ -15,7 +13,6 @@ import io
 import os
 import sys
 
-# pozwala uruchamiać "streamlit run app/main_app.py" z głównego folderu projektu
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
@@ -32,12 +29,12 @@ from src.matching import compare
 
 st.set_page_config(page_title="Biometria – Rozpoznawanie Tęczówki",
                    layout="wide")
-st.title("Biometria – Projekt 2: Rozpoznawanie tęczówki (algorytm Daugmana)")
+st.title("Rozpoznawanie tęczówki (algorytm Daugmana)")
 st.caption("Segmentacja → rozwinięcie → kod tęczówki → odległość Hamminga.")
 
 
 # --------------------------------------------------------------------------- #
-# Sidebar - parametry pipeline'u                                              #
+# Sidebar (parametry)                                                         #
 # --------------------------------------------------------------------------- #
 st.sidebar.header("Parametry algorytmu")
 
@@ -104,7 +101,7 @@ with st.sidebar.expander("Rozwinięcie tęczówki", expanded=False):
 
 with st.sidebar.expander("Kodowanie (Gabor)", expanded=True):
     frequency = st.slider("Częstotliwość falki f", 0.02, 0.5, 0.10, 0.01)
-    use_auto_sigma = st.checkbox("σ = π·f / 2 (zalecane przez prowadzącego)",
+    use_auto_sigma = st.checkbox("σ = π·f / 2 (zalecane)",
                                  value=True)
     if use_auto_sigma:
         sigma_value: float | None = None
@@ -166,7 +163,6 @@ def _unwrap_with_mask(unwrap) -> Image.Image:
     rgb = np.stack([img] * 3, axis=-1).astype(np.float64)
     invalid = ~unwrap.mask
     if invalid.any():
-        # tint zamaskowanych pikseli na czerwono i ściemnij
         red_tint = np.array([200.0, 60.0, 60.0])
         alpha = 0.55
         rgb[invalid] = (1 - alpha) * rgb[invalid] + alpha * red_tint
@@ -178,7 +174,6 @@ def _iris_code_visual(code) -> Image.Image:
     """Zamienia kod (num_bands, P, 2) na obraz binarny do podglądu."""
     bits = code.bits.reshape(code.bits.shape[0], -1)  # (bands, P*2)
     arr = (bits * 255).astype(np.uint8)
-    # zwiększ rozmiar dla czytelności
     pil = Image.fromarray(arr, mode="L").resize(
         (arr.shape[1] * 2, arr.shape[0] * 16), Image.NEAREST)
     return pil
@@ -321,4 +316,4 @@ with tab_match:
 
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Biometria 2026 — Projekt 2")
+st.sidebar.caption("Ryszard Czarnecki, Krzysztof Osiński")

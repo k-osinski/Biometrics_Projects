@@ -2,7 +2,7 @@
 Podział rozwiniętej tęczówki na pasy radialne i zamiana każdego pasa
 na wektor 1D (uśrednianie radialne z oknem Gaussa).
 
-Założenia (rys. 6.14 w książce + treść Projektu 2):
+Założenia:
     - rozwinięta tęczówka ma kształt (radial_res, angular_res),
       gdzie wiersze odpowiadają coraz większemu promieniowi
       (od źrenicy do twardówki),
@@ -146,7 +146,7 @@ def build_band_signals(unwrapped: np.ndarray,
                        min_valid_fraction: float = 0.5,
                        ) -> BandSignals:
     """
-    Cała ścieżka 6.14 (książka): obrazek -> 8 sygnałów 1D + maski.
+    Cała ścieżka: obrazek -> 8 sygnałów 1D + maski.
 
     Argumenty:
         unwrapped
@@ -191,10 +191,8 @@ def build_band_signals(unwrapped: np.ndarray,
         avg = gaussian_radial_average(band, sigma=gaussian_sigma, mask=bm)
         signals[i] = _resample_1d(avg, points_per_band)
 
-        # Statyczna maska kątowa wg książki.
         static_mask = _angular_mask(angular_res, angular_extents[i])
 
-        # Maska "wystarczającej liczby ważnych pikseli" wg extra_mask.
         if bm is not None:
             col_valid_frac = bm.astype(np.float64).mean(axis=0)
             dynamic_mask = col_valid_frac >= min_valid_fraction
@@ -202,7 +200,6 @@ def build_band_signals(unwrapped: np.ndarray,
         else:
             full_mask = static_mask
 
-        # Resampling do liczby punktów per pas.
         masks[i] = _resample_mask(full_mask, points_per_band)
 
     return BandSignals(signals=signals, masks=masks, band_height=band_h)

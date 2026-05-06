@@ -96,10 +96,6 @@ def _ransac_parabola(xs: np.ndarray, ys: np.ndarray,
     RANSAC: w każdej iteracji losuje 3 punkty, fituje parabolę, liczy
     inliers (|y - parabola(x)| < inlier_dist). Zwraca najlepszy fit
     + maskę inlierów.
-
-    Uwaga: 300 iteracji jest dość, żeby z prawdopodobieństwem >0.99
-    wylosować przynajmniej raz trójkę z samych inlierów nawet przy
-    50% udziale outlierów - z zapasem.
     """
     n = xs.size
     if n < 5:

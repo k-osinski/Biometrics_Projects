@@ -14,8 +14,7 @@ Oczekiwana struktura:
 
 Każdy obraz ma "klasę" jednoznacznie identyfikowaną parą
     (subject_id, eye_side)
-ponieważ tęczówki lewego i prawego oka tej samej osoby NIE są
-identyczne (patrz: książka, rozdział 6.2.1).
+ponieważ tęczówki lewego i prawego oka tej samej osoby nie są identyczne.
 """
 from __future__ import annotations
 from dataclasses import dataclass

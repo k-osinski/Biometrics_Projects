@@ -1,8 +1,6 @@
 """
 Skrypt ewaluacyjny - liczy odległości Hamminga dla par kodów wyznaczonych
-z całego datasetu MMU i prezentuje wyniki w formie histogramów +
-krzywych FAR/FRR (rys. 6.16 z książki).
-
+z całego datasetu MMU i prezentuje wyniki w formie histogramów + krzywych FAR/FRR.
 Uruchomienie:
     streamlit run app/evaluation_app.py
 """

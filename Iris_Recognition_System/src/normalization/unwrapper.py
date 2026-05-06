@@ -20,7 +20,7 @@ Zaletą tej parametryzacji jest niezależność opisu od:
     - położenia źrenicy względem tęczówki,
     - rozdzielczości akwizycji.
 
-Implementacja używa interpolacji bilinearnej (ręcznej, bez OpenCV).
+Implementacja używa interpolacji bilinearnej (ręcznej).
 """
 from dataclasses import dataclass
 import numpy as np
@@ -107,7 +107,6 @@ def unwrap_iris(img: np.ndarray,
     else:
         gray = img
 
-    # siatka kątów i promieni
     thetas = np.linspace(start_angle, start_angle + 2 * np.pi,
                          angular_res, endpoint=False)
     rs = np.linspace(0.0, 1.0, radial_res, endpoint=True)
@@ -115,14 +114,11 @@ def unwrap_iris(img: np.ndarray,
     cos_t = np.cos(thetas)
     sin_t = np.sin(thetas)
 
-    # punkty na okręgu źrenicy i tęczówki dla każdego θ
-    xp = pupil.cx + pupil.radius * cos_t   # shape (angular_res,)
+    xp = pupil.cx + pupil.radius * cos_t 
     yp = pupil.cy + pupil.radius * sin_t
     xi = iris.cx + iris.radius * cos_t
     yi = iris.cy + iris.radius * sin_t
 
-    # interpolacja w kierunku radialnym: macierze rs[r] * (xi - xp) itp.
-    # broadcasting -> (radial_res, angular_res)
     R = rs[:, None]
     xs = (1 - R) * xp[None, :] + R * xi[None, :]
     ys = (1 - R) * yp[None, :] + R * yi[None, :]
@@ -130,8 +126,6 @@ def unwrap_iris(img: np.ndarray,
     values, mask = _bilinear_sample(gray, xs, ys)
     image = np.clip(values, 0, 255).astype(np.uint8)
 
-    # Maska powiek - jeśli wykryto parabole, oznacz piksele leżące za nimi
-    # jako "nieważne" (False).
     if eyelids is not None and eyelids.detected:
         valid_eyelids = eyelid_mask(eyelids, xs, ys)
         mask = mask & valid_eyelids

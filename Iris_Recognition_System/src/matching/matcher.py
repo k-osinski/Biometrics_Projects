@@ -40,7 +40,6 @@ def _shift_columns(bits: np.ndarray, mask: np.ndarray,
                    shift: int) -> tuple[np.ndarray, np.ndarray]:
     """
     Cyklicznie przesuwa kod (i jego maskę) wzdłuż osi kątowej (axis=1).
-
     bits/mask kształtu (num_bands, points_per_band, 2) - przesuwamy
     drugą oś.
     """
@@ -53,7 +52,6 @@ def hamming_distance_with_rotation(code_a: IrisCode, code_b: IrisCode,
     """
     HD z kompensacją obrotu - najlepsze (minimalne) HD wśród
     przesunięć (-max_shift, ..., +max_shift).
-
     Zwraca (best_hd, best_shift).
     """
     a_bits = code_a.bits.astype(np.uint8)
@@ -76,7 +74,7 @@ def hamming_distance_with_rotation(code_a: IrisCode, code_b: IrisCode,
 def compare(code_a: IrisCode, code_b: IrisCode,
             max_shift: int = 8) -> dict:
     """
-    Wygodny wrapper do GUI - zwraca komplet informacji.
+    Wrapper do GUI - zwraca komplet informacji.
     """
     hd_zero = hamming_distance(code_a, code_b)
     hd_min, shift = hamming_distance_with_rotation(code_a, code_b,

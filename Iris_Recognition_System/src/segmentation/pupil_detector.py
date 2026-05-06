@@ -1,7 +1,7 @@
 """
 Detekcja źrenicy (czarna tarczka w środku oka).
 
-Algorytm zgodny z treścią Projektu 2 (na ocenę 4.0):
+Algorytm::
     1.  Konwersja do skali szarości.
     2.  Wyznaczenie progu bazowego P:
             P = (1 / (h * w)) * Σ Σ A(i, j)
@@ -31,7 +31,7 @@ class PupilResult:
     cy: int
     radius: int
     threshold: int
-    binary_mask: np.ndarray  # obraz binarny po morfologii (uint8, 0/255)
+    binary_mask: np.ndarray
 
 
 def base_mean_threshold(gray: np.ndarray) -> float:
@@ -94,15 +94,11 @@ def detect_pupil(gray: np.ndarray,
 
     binary = binarize_dark(gray, threshold)
 
-    # czyszczenie: zamknięcie wypełnia dziury w źrenicy,
-    # otwarcie usuwa odbicia i pojedyncze piksele tła.
     if close_size and close_size > 1:
         binary = closing(binary, get_structuring_element("square", close_size))
     if open_size and open_size > 1:
         binary = opening(binary, get_structuring_element("square", open_size))
 
-    # Filtr największego spójnego komponentu - eliminuje resztki spoza
-    # źrenicy (rzęsy, cienie), które przetrwały otwarcie.
     if keep_largest:
         binary = keep_largest_component(binary, connectivity=4)
 

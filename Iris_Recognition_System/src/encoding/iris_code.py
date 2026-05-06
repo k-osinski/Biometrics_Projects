@@ -22,7 +22,7 @@ from .gabor_filter import gabor_wavelet_1d, GaborParams
 
 DEFAULT_NUM_BANDS = 8
 DEFAULT_POINTS_PER_BAND = 128
-DEFAULT_FREQUENCY = 0.10  # cykli na próbkę - parametr eksperymentalny
+DEFAULT_FREQUENCY = 0.10 
 
 
 @dataclass
@@ -46,30 +46,6 @@ class IrisCode:
 def phase_quadrant_bits(coeffs: np.ndarray) -> np.ndarray:
     """
     Zamienia tablicę liczb zespolonych na bity (..., 2).
-
-    Bit 0 (MSB):  Re < 0    ->  1   (kod ćwiartki: bit "lewa strona")
-    Bit 1 (LSB):  Im < 0    ->  1   (kod ćwiartki: bit "dół")
-    Daje wynik:
-        I  : (0, 0) ↔ "00"
-        II : (1, 0) ↔ "01" → uwaga: tutaj implementacja używa
-                       innego porządku bitów niż książka, ale
-                       zachowuje własność kodu Graya.
-
-    Aby trzymać się dokładnie bookowego porządku ("00"=I, "01"=II,
-    "11"=III, "10"=IV), przyjmujemy:
-        bit 0 = Re < 0       (czy lewa półpłaszczyzna)
-        bit 1 = (Re < 0) XOR (Im < 0)  (Gray-coded "y")
-    Wtedy:
-        Re≥0, Im≥0  -> (0,0)  ✓
-        Re<0, Im≥0  -> (1,1)  - to jednak nie pasuje
-    Dla maksymalnej zgodności z opisem w książce, stosujemy:
-        bit 0 = Im < 0
-        bit 1 = Re < 0  XOR  Im < 0
-    Co po przekształceniu daje:
-        Re≥0, Im≥0 -> (0,0) "00"  I
-        Re<0, Im≥0 -> (0,1) "01"  II
-        Re<0, Im<0 -> (1,1) "11"  III
-        Re≥0, Im<0 -> (1,0) "10"  IV
     """
     re = coeffs.real
     im = coeffs.imag
@@ -124,9 +100,8 @@ def encode_iris(unwrapped: np.ndarray,
                                      centers=centers,
                                      params=params)
 
-    bits = phase_quadrant_bits(coeffs)             # (num_bands, P, 2)
+    bits = phase_quadrant_bits(coeffs)
 
-    # Maska "ważności" - rozdzielana na 2 bity dla każdego współczynnika
     mask = np.repeat(band_signals.masks[..., None], 2, axis=-1)
     return IrisCode(bits=bits.astype(np.uint8),
                     mask=mask,

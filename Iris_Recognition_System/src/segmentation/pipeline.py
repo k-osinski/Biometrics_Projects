@@ -1,5 +1,5 @@
 """
-Wygodny wrapper łączący detekcję źrenicy, tęczówki i powiek w jeden krok.
+Wrapper łączący detekcję źrenicy, tęczówki i powiek w jeden krok.
 """
 from dataclasses import dataclass, field
 import numpy as np

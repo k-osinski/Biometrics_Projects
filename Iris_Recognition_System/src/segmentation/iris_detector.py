@@ -1,7 +1,7 @@
 """
 Detekcja zewnętrznej granicy tęczówki.
 
-Algorytm (zgodny z duchem opisu z Projektu 2 i książki):
+Algorytm:
     1. Wygładzamy obraz filtrem Gaussa, by stłumić rzęsy i szum.
     2. Dla każdego promienia kandydackiego r ∈ [r_min, r_max] liczymy
        *średnią jasność po okręgu* o środku w środku źrenicy.
@@ -44,7 +44,7 @@ def _circle_mean_intensity(img: np.ndarray, cx: int, cy: int,
     Punkty wypadające poza obraz są pomijane. Sampling bilinearny.
     """
     h, w = img.shape
-    n = max(64, int(2 * np.pi * radius))   # gęstsze próbkowanie dla większych okręgów
+    n = max(64, int(2 * np.pi * radius))
     thetas = np.linspace(0.0, 2.0 * np.pi, n, endpoint=False)
     xs = cx + radius * np.cos(thetas)
     ys = cy + radius * np.sin(thetas)
@@ -106,7 +106,6 @@ def detect_iris(gray: np.ndarray,
     cx, cy = pupil.cx, pupil.cy
     rp = max(pupil.radius, 1)
 
-    # ograniczenia geometryczne: nie wychodzimy poza obraz
     radial_room = min(cx, w - 1 - cx, cy, h - 1 - cy)
     r_min = max(int(min_radius_factor * rp), rp + 3)
     r_max = min(int(max_radius_factor * rp), int(radial_room))
@@ -119,7 +118,6 @@ def detect_iris(gray: np.ndarray,
     means = np.array([_circle_mean_intensity(smoothed, cx, cy, int(r))
                       for r in radii], dtype=np.float64)
 
-    # uzupełnij ewentualne NaN-y
     if np.isnan(means).any():
         valid = ~np.isnan(means)
         if not valid.any():
@@ -133,9 +131,6 @@ def detect_iris(gray: np.ndarray,
     # 1) Metoda progowa: największe r, dla którego okrąg jest jeszcze "ciemny"
     below = means < threshold
     if below.any():
-        # Wybieramy najdalsze r należące do *początkowego ciągłego bloku*
-        # ciemnych okręgów (czyli ciągle wewnątrz tęczówki).
-        # "Dziury" dalej (np. plamka odbicia za sclerą) ignorujemy.
         contiguous_end = 0
         for k in range(below.size):
             if below[k]:

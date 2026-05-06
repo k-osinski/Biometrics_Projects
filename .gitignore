@@ -7,6 +7,7 @@ __pycache__/
 venv/
 env/
 .env
+Iris_Recognition_System/iris_venv/
 
 # Jupyter Notebooks - pliki tymczasowe
 .ipynb_checkpoints
@@ -16,5 +17,7 @@ env/
 .idea/
 .DS_Store
 
-# Dane i logi (opcjonalnie, jeśli nie chcesz wrzucać dużych zdjęć)
+# Dane i logi
 *.log
+
+Iris_Recognition_System/plan.md

@@ -61,7 +61,6 @@ def run_iris_pipeline(img: np.ndarray,
     return IrisPipelineResult(segmentation=seg, unwrap=unwrap, code=code)
 
 
-# kompatybilność z importami w stylu `from src import run_iris_pipeline`
-from .segmentation import (  # noqa: E402,F401
+from .segmentation import (
     detect_pupil, detect_iris, PupilResult, IrisResult,
 )
